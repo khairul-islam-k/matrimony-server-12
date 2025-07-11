@@ -27,22 +27,39 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    
+
 
     const usersCollection = client.db('biodatadb').collection('user');
-    
 
-    app.post('/biodata', async(req, res) => {
-        const data = req.body;
+    //Biodatas 
+    app.get('/premiumBiodatas', async (req, res) => {
+      try {
+        const results = await usersCollection
+          .find({ Biodata_Id: "user" })
+          .sort({ createdAt: -1 }) // Latest first
+          .limit(6) // Only 6 results
+          .toArray();
 
-        const result = await usersCollection.insertOne(data);
-        res.send(result);
+        res.status(200).send(results);
+      } catch (error) {
+        console.error('Error fetching biodata:', error);
+        res.status(500).json({ message: 'Failed to fetch biodata' });
+      }
+    });
+
+
+
+    app.post('/biodata', async (req, res) => {
+      const data = req.body;
+
+      const result = await usersCollection.insertOne(data);
+      res.send(result);
     })
 
-    
+
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
-   
+
 
   }
 }
@@ -52,10 +69,10 @@ run().catch(console.dir);
 
 // Basic route
 app.get('/', (req, res) => {
-    res.send('Matrimony server is running');
+  res.send('Matrimony server is running');
 });
 
 // Start server
 app.listen(port, () => {
-    console.log(`Server is listening on port ${port}`);
+  console.log(`Server is listening on port ${port}`);
 });
