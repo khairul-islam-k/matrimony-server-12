@@ -54,6 +54,21 @@ async function run() {
       res.send(result);
     });
 
+    // GET /similarBiodatas/:type/:id
+    app.get("/similarBiodatas/:type/:id", async (req, res) => {
+      const { type, id } = req.params;
+      const result = await usersCollection
+        .find({
+          biodataType: type,
+          _id: { $ne: new ObjectId(id) },
+        })
+        .sort({ createdAt: -1 })
+        .limit(3)
+        .toArray();
+      res.send(result);
+    });
+
+
 
 
     app.post('/biodata', async (req, res) => {
