@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -13,7 +14,7 @@ app.use(express.json());
 
 
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
+
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.rodv5np.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -35,7 +36,7 @@ async function run() {
     app.get('/premiumBiodatas', async (req, res) => {
       try {
         const results = await usersCollection
-          .find({ Biodata_Id: "user" })
+          .find({ Biodata_Id: "premium" })
           .sort({ createdAt: -1 }) // Latest first
           .limit(6) // Only 6 results
           .toArray();
@@ -45,6 +46,12 @@ async function run() {
         console.error('Error fetching biodata:', error);
         res.status(500).json({ message: 'Failed to fetch biodata' });
       }
+    });
+
+    app.get('/biodata/:id', async (req, res) => {
+      const id = req.params.id;
+      const result = await usersCollection.findOne({ _id: new ObjectId(id) });
+      res.send(result);
     });
 
 
