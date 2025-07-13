@@ -32,6 +32,12 @@ async function run() {
 
     const usersCollection = client.db('biodatadb').collection('user');
 
+    // GET all users
+    app.get('/users', async (req, res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result);
+    });
+
     //Biodatas 
     app.get('/premiumBiodatas', async (req, res) => {
       try {
@@ -54,9 +60,29 @@ async function run() {
       res.send(result);
     });
 
+    // Middleware: verifyJWT must set req.user.email
+    app.get('/mydetail/:email', async (req, res) => {
+      try {
+        const userEmail = req.params.email;
+
+        const result = await usersCollection.findOne({ email: userEmail });
+
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching biodata:", error);
+        res.status(500).send({ message: "Internal server error" });
+      }
+    });
+
+
     // GET /similarBiodatas/:type/:id
     app.get("/similarBiodatas/:type/:id", async (req, res) => {
       const { type, id } = req.params;
+
+      if (!type && !id) {
+        return;
+      }
+
       const result = await usersCollection
         .find({
           biodataType: type,
