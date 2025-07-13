@@ -47,6 +47,15 @@ async function run() {
       res.send(result);
     });
 
+    //make admit
+    app.patch('/users/admin/:id', async (req, res) => {
+      const result = await usersCollection.updateOne(
+        { _id: new ObjectId(req.params.id) },
+        { $set: { Biodata_Id: 'admin' } }
+      );
+      res.send(result);
+    });
+
     //Biodatas 
     app.get('/premiumBiodatas', async (req, res) => {
       try {
