@@ -38,6 +38,15 @@ async function run() {
       res.send(result);
     });
 
+    //make premium
+    app.patch('/users/premium/:id', async (req, res) => {
+      const result = await usersCollection.updateOne(
+        { _id: new ObjectId(req.params.id) },
+        { $set: { Biodata_Id: 'premium' } }
+      );
+      res.send(result);
+    });
+
     //Biodatas 
     app.get('/premiumBiodatas', async (req, res) => {
       try {
