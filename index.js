@@ -32,6 +32,7 @@ async function run() {
 
 
     const usersCollection = client.db('biodatadb').collection('user');
+    const paymentsCollection = client.db('biodatadb').collection('payment');
 
     // GET all users
     app.get('/users', async (req, res) => {
@@ -94,6 +95,7 @@ async function run() {
     });
 
 
+
     // GET /similarBiodatas/:type/:id
     app.get("/similarBiodatas/:type/:id", async (req, res) => {
       const { type, id } = req.params;
@@ -124,7 +126,7 @@ async function run() {
     })
 
     //take money
-    app.post('/create-payment-intent', async(req, res) => {
+    app.post('/create-payment-intent', async (req, res) => {
       const amount = req.body?.amountInCents;
       const paymentIntent = await stripe.paymentIntents.create({
         amount,
@@ -132,8 +134,88 @@ async function run() {
         payment_method_types: ['card']
       })
 
-      res.send({clientSecret: paymentIntent.client_secret});
+      res.send({ clientSecret: paymentIntent.client_secret });
     })
+
+
+
+    //payment 
+    app.post('/record-payment', async (req, res) => {
+      const { biodataId, email, transactionId, amount, method = 'card' } = req.body;
+
+      const paymentDoc = {
+        biodataId,
+        email,
+        transactionId,
+        amount,
+        method,
+        status: 'pending',
+        paid_at: new Date().toISOString(),
+      };
+
+      try {
+        const result = await paymentsCollection.insertOne(paymentDoc);
+        res.status(201).json({ message: 'Payment recorded', insertedId: result.insertedId });
+      } catch (error) {
+        res.status(500).json({ message: 'Failed to save payment', error: error.message });
+      }
+    });
+
+
+    app.get('/contactRequests', async (req, res) => {
+      const email = req.query.email;
+      const data = email ? { email } : {};
+      const result = await paymentsCollection.find(data).toArray();
+
+      for (const pay of result) {
+        const id = pay.biodataId;
+        const objId = { _id: new ObjectId(id) };
+        const user = await usersCollection.findOne(objId);
+        pay.biodataEmail = user.email;
+        pay.biodataMobile = user.mobile;
+        pay.biodataName = user.name;
+      }
+      res.send(result);
+
+    })
+
+
+    app.patch('/contactRequests/:id/approve', async (req, res) => {
+      const id = req.params.id;
+
+      try {
+        const result = await paymentsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { status: 'approved' } }
+        );
+
+          res.send({ message: 'Contact request approved' });
+        
+      } catch (error) {
+        res.status(500).send({ message: 'Failed to approve', error: error.message });
+      }
+    });
+
+
+    app.delete('/contactRequests/:id', async (req, res) => {
+      try {
+        const { id } = req.params;
+
+
+        const result = await paymentsCollection.deleteOne({ _id: new ObjectId(id) });
+
+        if (result.deletedCount === 0) {
+          return res.status(404).json({ message: 'Biodata not found' });
+        }
+
+        res.status(200).json({ message: 'Biodata deleted successfully' });
+      } catch (error) {
+        console.error('Error deleting biodata:', error);
+        res.status(500).json({ message: 'Failed to delete biodata' });
+      }
+    });
+
+
 
 
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
