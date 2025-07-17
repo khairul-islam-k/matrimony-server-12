@@ -33,14 +33,92 @@ async function run() {
 
     const usersCollection = client.db('biodatadb').collection('user');
     const paymentsCollection = client.db('biodatadb').collection('payment');
+    const favoritesCollection = client.db('biodatadb').collection('favourites');
 
     // GET all users
     app.get('/users', async (req, res) => {
-      const result = await usersCollection.find().toArray();
+      const result = await usersCollection.find().sort({createdAt: -1}).toArray();
       res.send(result);
     });
 
-    //make premium
+    //total premium
+    app.get('/premiumApproval', async (req, res) => {
+      try {
+        const results = await usersCollection
+          .find({ Biodata_Id: "premium" })
+          .sort({ createdAt: -1 }) // Latest first
+          .toArray();
+
+        res.status(200).send(results);
+      } catch (error) {
+        console.error('Error fetching biodata:', error);
+        res.status(500).json({ message: 'Failed to fetch biodata' });
+      }
+    });
+
+
+    //Biodatas 
+    app.get('/premiumBiodatas', async (req, res) => {
+      try {
+        const results = await usersCollection
+          .find({ Biodata_Id: "premium" })
+          .sort({ createdAt: -1 }) // Latest first
+          .limit(6) // Only 6 results
+          .toArray();
+
+        res.status(200).send(results);
+      } catch (error) {
+        console.error('Error fetching biodata:', error);
+        res.status(500).json({ message: 'Failed to fetch biodata' });
+      }
+    });
+
+    //favorites by email
+    app.get('/favorite', async (req, res) => {
+      const email = req.query.email;
+      const data = { userEmail: email };
+      const result = await favoritesCollection.find(data).toArray();
+
+      for (const pay of result) {
+        const id = pay.biodataId;
+        const objId = { _id: new ObjectId(id) };
+        const user = await usersCollection.findOne(objId);
+        pay.biodataName = user.name;
+        pay.BiodataId = user._id;
+        pay.occupation = user.occupation;
+        pay.BiodataAddress = user.permanentDivision;
+      }
+      res.send(result);
+
+    })
+
+
+    //premium request
+    app.get('/biodatas/premium-requests', async (req, res) => {
+      const result = await usersCollection
+        .find({ isPremium: 'pending' })
+        .toArray();
+      res.send(result);
+    });
+
+    //approve premium
+    app.patch('/biodatas/premium/approve/:id', async (req, res) => {
+      const id = req.params.id;
+      const result = await usersCollection.updateOne(
+        { _id: new ObjectId(id) },
+        {
+          $set: {
+            isPremium: 'approved',
+            Biodata_Id: 'premium'
+          }
+        }
+      );
+      res.send(result);
+    });
+
+
+
+    //make premium manage user
     app.patch('/users/premium/:id', async (req, res) => {
       const result = await usersCollection.updateOne(
         { _id: new ObjectId(req.params.id) },
@@ -58,21 +136,13 @@ async function run() {
       res.send(result);
     });
 
-    //Biodatas 
-    app.get('/premiumBiodatas', async (req, res) => {
-      try {
-        const results = await usersCollection
-          .find({ Biodata_Id: "premium" })
-          .sort({ createdAt: -1 }) // Latest first
-          .limit(6) // Only 6 results
-          .toArray();
-
-        res.status(200).send(results);
-      } catch (error) {
-        console.error('Error fetching biodata:', error);
-        res.status(500).json({ message: 'Failed to fetch biodata' });
-      }
+    app.delete('/favorites/:id', async (req, res) => {
+      const id = req.params.id;
+      const result = await favoritesCollection.deleteOne({ _id: new ObjectId(id) });
+      res.send(result);
     });
+
+
 
     app.get('/biodata/:id', async (req, res) => {
       const id = req.params.id;
@@ -125,6 +195,49 @@ async function run() {
       res.send(result);
     })
 
+    app.post('/favorites', async (req, res) => {
+      const { biodataId, userEmail } = req.body;
+
+      console.log(biodataId, userEmail)
+
+
+      // Prevent duplicate favorites
+
+      const result = await favoritesCollection.insertOne({
+        biodataId,
+        userEmail,
+        createdAt: new Date(),
+      });
+
+      res.status(201).json({ message: 'Added to favorites', insertedId: result.insertedId });
+    });
+
+
+    app.put('/biodata/:id', async (req, res) => {
+      const id = req.params.id;
+      const data = req.body;
+      const objId = { _id: new ObjectId(id) }
+      const updateDoc = {
+        $set: data
+      }
+      const result = await usersCollection.updateOne(objId, updateDoc);
+      res.send(result);
+    })
+
+    //premium request
+    app.put('/biodatas/premium/:id', async (req, res) => {
+      const id = req.params.id;
+      const { isPremium } = req.body;
+
+      const result = await usersCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { isPremium } }
+      );
+
+      res.send(result);
+    });
+
+
     //take money
     app.post('/create-payment-intent', async (req, res) => {
       const amount = req.body?.amountInCents;
@@ -164,8 +277,25 @@ async function run() {
 
     app.get('/contactRequests', async (req, res) => {
       const email = req.query.email;
-      const data = email ? { email } : {};
+      const data = email ? { email } : {status: 'approved'};
       const result = await paymentsCollection.find(data).toArray();
+
+      for (const pay of result) {
+        const id = pay.biodataId;
+        const objId = { _id: new ObjectId(id) };
+        const user = await usersCollection.findOne(objId);
+        pay.biodataEmail = user.email;
+        pay.biodataMobile = user.mobile;
+        pay.biodataName = user.name;
+      }
+      res.send(result);
+
+    })
+
+
+    app.get('/contactRequests/pending', async (req, res) => {
+      const query = {status: 'pending'};
+      const result = await paymentsCollection.find(query).toArray();
 
       for (const pay of result) {
         const id = pay.biodataId;
@@ -189,8 +319,8 @@ async function run() {
           { $set: { status: 'approved' } }
         );
 
-          res.send({ message: 'Contact request approved' });
-        
+        res.send({ message: 'Contact request approved' });
+
       } catch (error) {
         res.status(500).send({ message: 'Failed to approve', error: error.message });
       }
