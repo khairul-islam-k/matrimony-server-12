@@ -34,10 +34,11 @@ async function run() {
     const usersCollection = client.db('biodatadb').collection('user');
     const paymentsCollection = client.db('biodatadb').collection('payment');
     const favoritesCollection = client.db('biodatadb').collection('favourites');
+    const gotMarriedCollection = client.db('biodatadb').collection('married');
 
     // GET all users
     app.get('/users', async (req, res) => {
-      const result = await usersCollection.find().sort({createdAt: -1}).toArray();
+      const result = await usersCollection.find().sort({ createdAt: -1 }).toArray();
       res.send(result);
     });
 
@@ -277,7 +278,7 @@ async function run() {
 
     app.get('/contactRequests', async (req, res) => {
       const email = req.query.email;
-      const data = email ? { email } : {status: 'approved'};
+      const data = email ? { email } : { status: 'approved' };
       const result = await paymentsCollection.find(data).toArray();
 
       for (const pay of result) {
@@ -294,7 +295,7 @@ async function run() {
 
 
     app.get('/contactRequests/pending', async (req, res) => {
-      const query = {status: 'pending'};
+      const query = { status: 'pending' };
       const result = await paymentsCollection.find(query).toArray();
 
       for (const pay of result) {
@@ -345,6 +346,23 @@ async function run() {
       }
     });
 
+
+    //Married review
+    app.get('/gotMarried', async (req, res) => {
+      const result = await gotMarriedCollection.find().sort({ createdAt: -1 }).toArray();
+      res.send(result);
+    });
+
+
+    app.post('/gotMarried', async (req, res) => {
+      try {
+        const data = req.body;
+        const result = await gotMarriedCollection.insertOne(data);
+        res.send(result);
+      } catch (err) {
+        res.status(500).send({ error: 'Failed to save story' });
+      }
+    });
 
 
 
