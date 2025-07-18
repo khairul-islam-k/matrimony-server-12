@@ -62,16 +62,13 @@ async function run() {
         return res.status(401).send({ message: 'unauthorized access' })
       }
 
-      console.log(token)
       // verify the token
       try {
         const decoded = await admin?.auth().verifyIdToken(token);
         req.decoded = decoded;
-        console.log(decoded)
         next();
       }
       catch (error) {
-        console.log(error)
         return res.status(403).send({ message: 'forbidden access' })
       }
     }
@@ -80,13 +77,19 @@ async function run() {
     app.get('/users', async (req, res) => {
       const page = parseInt(req.query.page);
       const size = parseInt(req.query.size);
-      console.log(page, size);
-      const result = await usersCollection.find().sort({ createdAt: -1 }).toArray();
+
+      let result = await usersCollection.find().sort({ createdAt: -1 }).toArray();
+      if (size) {
+      result = await usersCollection.find()
+      .skip(page * size)
+      .limit(size)
+      .toArray();
+      }
       res.send(result);
     });
 
     //total premium
-    app.get('/premiumApproval', verifyFBToken, async (req, res) => {
+    app.get('/premiumApproval', async (req, res) => {
       try {
         const results = await usersCollection
           .find({ Biodata_Id: "premium" })
@@ -241,8 +244,6 @@ async function run() {
 
     app.post('/favorites', async (req, res) => {
       const { biodataId, userEmail } = req.body;
-
-      console.log(biodataId, userEmail)
 
 
       // Prevent duplicate favorites
@@ -411,7 +412,7 @@ async function run() {
      // Send a ping to confirm a successful connection
         // await client.db("admin").command({ ping: 1 });
         
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    //console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
 
 
