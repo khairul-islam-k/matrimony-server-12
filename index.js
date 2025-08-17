@@ -64,14 +64,18 @@ async function run() {
 
       // verify the token
       try {
-        const decoded = await admin?.auth().verifyIdToken(token);
+        const decoded = await admin.auth().verifyIdToken(token);
+        console.log(decoded);
         req.decoded = decoded;
         next();
       }
       catch (error) {
+        console.log('error',error)
         return res.status(403).send({ message: 'forbidden access' })
       }
     }
+
+
 
     // GET all users
     app.get('/users', async (req, res) => {
@@ -81,12 +85,18 @@ async function run() {
       let result = await usersCollection.find().sort({ createdAt: -1 }).toArray();
       if (size) {
       result = await usersCollection.find()
+      .sort({createdAt: -1})
       .skip(page * size)
       .limit(size)
       .toArray();
       }
       res.send(result);
     });
+
+    app.get('/usersCount', async(req, res) => {
+      const count = await usersCollection.estimatedDocumentCount();
+      res.send({count});
+    })
 
     //total premium
     app.get('/premiumApproval', async (req, res) => {
@@ -320,7 +330,8 @@ async function run() {
     });
 
 
-    app.get('/contactRequests', async (req, res) => {
+    app.get('/contactRequests',verifyFBToken, async (req, res) => {
+      //console.log(req.headers);
       const email = req.query.email;
       const data = email ? { email } : { status: 'approved' };
       const result = await paymentsCollection.find(data).toArray();
