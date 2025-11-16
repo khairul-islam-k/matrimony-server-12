@@ -25,9 +25,6 @@ admin.initializeApp({
 
 
 
-
-
-
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.rodv5np.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -423,6 +420,13 @@ async function run() {
       }
     });
 
+    app.delete("/gotMarried/:id", async (req, res) => {
+      const id = req.params.id;
+      const objectId = {_id: new ObjectId(id)};
+      console.log(objectId);
+      const result = await gotMarriedCollection.deleteOne(objectId);
+      res.send(result);
+    })
 
      // Send a ping to confirm a successful connection
         // await client.db("admin").command({ ping: 1 });
