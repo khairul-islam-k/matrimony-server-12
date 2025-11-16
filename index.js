@@ -28,9 +28,6 @@ admin.initializeApp({
 
 
 
-
-
-
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.rodv5np.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -52,7 +49,7 @@ async function run() {
     const gotMarriedCollection = client.db('biodatadb').collection('married');
 
     const verifyFBToken = async (req, res, next) => {
-      const authHeader = req.headers.authorization;
+      const authHeader = req.headers?.authorization;
       
       if (!authHeader) {
         return res.status(401).send({ message: 'unauthorized access' })
@@ -65,7 +62,7 @@ async function run() {
       // verify the token
       try {
         const decoded = await admin.auth().verifyIdToken(token);
-        console.log(decoded);
+        //console.log(decoded);
         req.decoded = decoded;
         next();
       }
@@ -112,6 +109,13 @@ async function run() {
         res.status(500).json({ message: 'Failed to fetch biodata' });
       }
     });
+
+    app.delete("/user/:id", async (req, res) => {
+      const id = req.params.id;
+      const objectId = {_id: new ObjectId(id)};
+      const result = await usersCollection.deleteOne(objectId);
+      res.send(result);
+    })
 
 
     //Biodatas 
