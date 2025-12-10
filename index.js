@@ -47,7 +47,7 @@ async function run() {
 
     const verifyFBToken = async (req, res, next) => {
       const authHeader = req.headers?.authorization;
-      
+
       if (!authHeader) {
         return res.status(401).send({ message: 'unauthorized access' })
       }
@@ -64,7 +64,7 @@ async function run() {
         next();
       }
       catch (error) {
-        console.log('error',error)
+        console.log('error', error)
         return res.status(403).send({ message: 'forbidden access' })
       }
     }
@@ -73,23 +73,29 @@ async function run() {
 
     // GET all users
     app.get('/users', async (req, res) => {
-      const page = parseInt(req.query.page);
-      const size = parseInt(req.query.size);
-
-      let result = await usersCollection.find().sort({ createdAt: -1 }).toArray();
-      if (size) {
-      result = await usersCollection.find()
-      .sort({createdAt: -1})
-      .skip(page * size)
-      .limit(size)
-      .toArray();
-      }
+      const result = await usersCollection.find().sort({ createdAt: -1 }).toArray();
+      
       res.send(result);
     });
 
-    app.get('/usersCount', async(req, res) => {
+
+    // 6card shows
+    app.get("/user6", async (req, res) => {
+      const page = parseInt(req.query.page) || 0;
+      const size = parseInt(req.query.size) || 6;
+
+      const result = await usersCollection.find()
+          .sort({ createdAt: -1 })
+          .skip(page * size)
+          .limit(size)
+          .toArray();
+
+          res.send(result);
+    })
+
+    app.get('/usersCount', async (req, res) => {
       const count = await usersCollection.estimatedDocumentCount();
-      res.send({count});
+      res.send({ count });
     })
 
     //total premium
@@ -109,7 +115,7 @@ async function run() {
 
     app.delete("/user/:id", async (req, res) => {
       const id = req.params.id;
-      const objectId = {_id: new ObjectId(id)};
+      const objectId = { _id: new ObjectId(id) };
       const result = await usersCollection.deleteOne(objectId);
       res.send(result);
     })
@@ -331,7 +337,7 @@ async function run() {
     });
 
 
-    app.get('/contactRequests',verifyFBToken, async (req, res) => {
+    app.get('/contactRequests', verifyFBToken, async (req, res) => {
       //console.log(req.headers);
       const email = req.query.email;
       const data = email ? { email } : { status: 'approved' };
@@ -422,15 +428,15 @@ async function run() {
 
     app.delete("/gotMarried/:id", async (req, res) => {
       const id = req.params.id;
-      const objectId = {_id: new ObjectId(id)};
+      const objectId = { _id: new ObjectId(id) };
       console.log(objectId);
       const result = await gotMarriedCollection.deleteOne(objectId);
       res.send(result);
     })
 
-     // Send a ping to confirm a successful connection
-        // await client.db("admin").command({ ping: 1 });
-        
+    // Send a ping to confirm a successful connection
+    // await client.db("admin").command({ ping: 1 });
+
     //console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
 
